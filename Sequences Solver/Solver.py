@@ -1,107 +1,104 @@
-##Sequence Solver
-##
-##-OUTPUT- Nth term
-##       - Next 3 terms
-##       - 100th term
-import misc
-import math
+from string import ascii_letters
 
-def checkType(seq):
-    """
-    Identify the type of sequence given
-    :argument seq: The sequence that is used
-    :returns type: Either returns 'linear' or 'quadratic' depending on what type of equation it is
-    """
-    if type(findDif(seq)) is int:
-        return 'linear'
-    else:
-        return 'quadratic'
 
-def findDif(seq):
+all_same = lambda items: all(x == items[0] for x in items)
+
+
+def find_difference(sequence):
     """
     Finds the difference between each number in the sequence provided,
     if the difference between each of them is the same, it must be linear, if not; quadratic
-    :argument seq: The sequence that is tested by the function
+    :argument sequence: The sequence that is tested by the function
     :returns nextLayer[0]: If it is linear it returns the number that it goes up in
     :returns nextLayer: If it is quadratic then it returns all of the differences between the terms
     """
-    nextLayer=[]
-    i=0
-    while i<(len(seq)-1):
-        nextLayer.append(seq[i+1]-seq[i])
-        i+=1
-    if misc.all_same(nextLayer)==True:
-        return nextLayer[0]
-    else:
-        return nextLayer
+    assert all([isinstance(i, (int, float)) for i in sequence]), 'Not all of the items in sequence were integers or floating point values: {}'.format(sequence)
+    nextLayer = []
+    i = 0
+    while i < (len(sequence) - 1):
+        nextLayer.append(sequence[i + 1] - sequence[i])
+        i += 1
+    return nextLayer
 
-def nthTerm(seq): ##outputs the nthTerm rule
-    """
-    Outputs the nth term rule written as n=n^a
-    """
-    if checkType(seq)=='linear': ##if it's a linear sequence then the nth term
-        coefficient=findDif(seq) ##must be the difference between the numbers
-        constant=seq[0]-coefficient ##plus or minus a constant
-        if constant==0:
-            constant=''
-        elif constant>0:
-            constant='+'+str(constant)
-        return 'n=%sn%s' %(str(coefficient),str(constant))
-    if checkType(seq)=='quadratic': ##if it's a quadratic sequence
-        layer=seq
-        index=0
-        while type(layer) is not int:
-            layer=findDif(layer)
-            index+=1
-            if index>20:
-                return 'error'
-        coefficient=seq
-        for i in range(0,index,1):
-            coefficient=findDif(coefficient)
-        print(layer)
-        coefficient=coefficient/2/index
-        print(coefficient)
 
-        constant=seq[0]-coefficient*pow(1,index) ##useless "*(1^index)" just there for sensibility
-        if constant==0:
-            constant=''
-        elif constant>0:
-            constant='+'+str(constant)
-        if coefficient==1:
-            coefficient=''
-        return 'n=%sn^%s%s' %(str(coefficient),str(index),str(constant))
+def get_general_formulae(highest_power):
+    highest_power += 1
+    layers = [[]]
+    # For each power of n
+    for i in range(highest_power):
+        # Add a list of all the needed powers
+        layers[0].append([(j + 1) ** i for j in range(highest_power + 1)])
+    # Layers -> [[a0, a1, a2, a3], [b0, b1, b2, b3], [c0, c1, c2, c3] ad infinitum]
+    # print(layers)
 
-def findTerm(seq,Pos): ##predicts a number in a given seq
-    if checkType(seq)=='linear':
-        coefficient=findDif(seq)
+    # Find the highest_power-th difference of the sequence
+    for i in range(highest_power - 1):
+        layers.append([find_difference(layers[-1][j]) for j in range(len(layers[-1]))])
+    # print(layers)
+    # For each item in the 'sausage' save the expression it forms
+    # print([' + '.join(reversed([str(j)  + str(ascii_letters[(highest_power - 1) - index]) for index, j in enumerate(i)])) for i in [[j[0] for j in i] for i in layers]])
+    formulae = [list(reversed([j for index, j in enumerate(i)]))
+                        for i in [[j[0]
+                            for j in i]
+                                for i in layers]]
+    # print(formulae)
+    return formulae
 
-        constant=seq[0]-coefficient
-        return (coefficient*Pos)+constant
-    if checkType(seq)=='quadratic':
-        layer=seq
-        index=0
-        while type(layer) is not int:
-            layer=findDif(layer)
-            index+=1
-            if index>20:
-                return 'error'
-        coefficient=seq
-        for i in range(0,index,1):
-            coefficient=findDif(coefficient)
-        coefficient=coefficient/index/2
-        constant=seq[0]-coefficient*pow(1,index)
-        return (coefficient*pow(Pos,index)+constant)
 
-def main():
-    Input=input('What is the sequence? ')
-    Sequence=Input.split()
-    Seq=[]
-    for item in Sequence:
-        Seq.append(int(item))
-    #Seq=[int(a) for a in Seq]
-    print('The Nth Term is... '+nthTerm(Seq))
-    print('The next three terms are... '+str(findTerm(Seq,len(Seq)+1))+','+str(findTerm(Seq,len(Seq)+2))+','+str(findTerm(Seq,len(Seq)+3)))
-    print('The 100th term is... '+str(findTerm(Seq,100)))
-    main()
+def substitute(equation, values):
+    result = []
+    for index, i in enumerate(equation):
+        result.append(i * values[index])
+    return result
 
-main()
+
+class beautify:
+    def __init__(self, f):
+        self.f = f
+
+    def __call__(self, sequence):
+        answer = self.f(sequence)
+        # Runs through answer neatening it up to match mathematical conventions
+        print(''.join(["{coefficient}{power} ".format(coefficient=i if i < 0 else "+ " + str(i) if not str(i).endswith('.0') else int(i) if i < 0 else "+ " + str(int(i)), power="n**" + str((len(answer) - 1) - index) if (len(answer) - 1) - index != 0 else '') if i != 0 else '' for index, i in enumerate(answer)]).lstrip('+ '))
+        return answer
+
+
+@beautify
+def solve(sequence):
+    layers = [sequence]
+    for i in sequence:
+        if not all_same(layers[-1]):
+            layers.append(find_difference(layers[-1]))
+    print(layers)
+    general_formulae = get_general_formulae(len(layers) - 1)
+    print(general_formulae)
+    answers = [None for i in general_formulae]
+    print(len(answers))
+    # Go up through the layers, working out the values of each variable as it goes
+    for index, i in enumerate(reversed(general_formulae)):
+        variable = layers[-(index + 1)][0]
+        for subindex, j in enumerate(i):
+            if answers[subindex] is None:
+                variable /= j
+                break
+            else:
+                variable -= answers[subindex] * j
+        answers[index] = variable
+    # print(answers)
+    return answers
+
+
+
+
+nth_term = solve([3, 6, 11, 18, 27])
+print(nth_term)
+
+#def main():
+#    sequence = [int(item) for item in input('What is the sequence? ').split(',').split()]
+#    # sequence=[int(a) for a in sequence]
+#    print('The Nth Term is... ')
+#    nth_term = solve(sequence)
+#    print(nth_term)
+#    print('The next three terms are... ' + str(find_term(sequence, len(sequence) + 1)) + ',' + str(
+#        find_term(sequence, len(sequence) + 2)) + ',' + str(find_term(sequence, len(sequence) + 3)))
+#    print('The 100th term is... ' + str(find_term(sequence, 100)))
